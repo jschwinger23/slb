@@ -58,3 +58,10 @@ def conf(ctx):
         server = nginx_conf.find_server(url)
         for l in server.as_strings:
             print(l)
+
+
+@main.command()
+@click.argument('filename')
+def fmt(filename):
+    nginx_conf = NginxConf.from_file(filename)
+    print(nginx_conf.format())

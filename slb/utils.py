@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import nginx
 import click
 import requests
@@ -70,9 +71,7 @@ class LB:
                 'env': self.env,
                 'detail': True,
             },
-            headers={
-                'TOKEN': os.getenv('SMM_TOKEN')
-            }
+            headers={'TOKEN': os.getenv('SMM_TOKEN')}
         )
         res.raise_for_status()
         rj = res.json()
@@ -91,6 +90,10 @@ class LB:
 
 
 class NginxConf:
+
+    @classmethod
+    def from_file(cls, filename):
+        return cls(open(filename).read())
 
     def __init__(self, conf: str):
         self.conf = conf
@@ -122,3 +125,7 @@ class NginxConf:
             raise ValueError('server not found')
 
         return server
+
+    def format(self):
+        p = re.compile(r'^\s*(?:{|},?)\s*$\n', re.M)
+        return p.sub('', json.dumps(self.nconf.as_dict, sort_keys=True, indent=4))
