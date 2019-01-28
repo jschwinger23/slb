@@ -101,6 +101,7 @@ class NginxConf:
 
     def find_location(self, url: URL) -> nginx.Location:
         server = self.find_server(url)
+        import pdb; pdb.set_trace()
         location = type('', (), {'value': ''})
         for l in (l for l in server.children if isinstance(l, nginx.Location)):
             if re.match(l.value, url.path or
@@ -118,8 +119,8 @@ class NginxConf:
             server_name = next(
                 k for k in server.children if k.name == 'server_name'
             )
-            bind = next(k for k in server.children if k.name == 'listen')
-            if url.netloc in server_name.value and url.port in bind.value:
+            bind = ''.join([k.value for k in server.children if getattr(k, 'name', '') == 'listen'])
+            if url.netloc == server_name.value and url.port in bind:
                 break
         else:
             raise ValueError('server not found')
@@ -127,5 +128,22 @@ class NginxConf:
         return server
 
     def format(self):
+        jconf = self.nconf.as_dict
+        def keyfunc(x):
+            if 'server' not in x:
+                return sorted(x.keys()), ''
+            server_name = next(d for d in x['server'] if 'server_name' in d)['server_name']
+            listen = next(d for d in x['server'] if 'listen' in d)['listen']
+            return sorted(x.keys()), f'{server_name}:{listen}'
+        jconf['conf'].sort(key=keyfunc)
+        for c in jconf['conf']:
+            for v in c.values():
+                if isinstance(v, list):
+                    v.sort(key=lambda x: sorted(x.keys()) + sorted(x.values()))
+                    for l in v:
+                        for d in l.values():
+                            if isinstance(d, list):
+                                d.sort(key=lambda x: sorted(x.keys()) + sorted(x.values()))
+
         p = re.compile(r'^\s*(?:{|},?)\s*$\n', re.M)
-        return p.sub('', json.dumps(self.nconf.as_dict, sort_keys=True, indent=4))
+        return p.sub('', json.dumps(jconf, sort_keys=True, indent=4))

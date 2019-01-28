@@ -22,7 +22,7 @@ def inspect(ctx):
     url = ctx.obj['url']
     lb = LB(url.env, url.cid)
     conf_filename = lb.run(
-        f'grep {url.netloc} -r /etc/nginx/http-enabled/ -l | grep -v dyupstream'
+        f'grep -P "server_name\s+{url.netloc}" -r /etc/nginx/http-enabled/ -l | grep -v dyupstream | head -1'
     )
     click.secho(f'conf_file: {conf_filename}')
     conf_content = lb.run(f'cat {conf_filename}')
@@ -46,7 +46,7 @@ def conf(ctx):
     url = ctx.obj['url']
     lb = LB(url.env, url.cid)
     conf_filename = lb.run(
-        f'grep {url.netloc} -r /etc/nginx/http-enabled/ -l | grep -v dyupstream'
+        f'grep -P "server_name\s+{url.netloc}" -r /etc/nginx/http-enabled/ -l | grep -v dyupstream | head -1'
     )
     click.secho(f'conf_file: {conf_filename}')
     nginx_conf = NginxConf(lb.run(f'cat {conf_filename}'))
