@@ -29,6 +29,8 @@ class URL:
     @property
     def cid(self):
         cid = 'sg'
+        if 'test' in self.netloc or 'uat' in self.netloc or 'staging' in self.netloc:
+            return cid
         if self.netloc.endswith('.tw'):
             cid = 'tw1'
         elif self.netloc.endswith('.co.id'):
@@ -39,7 +41,7 @@ class URL:
 
     @property
     def port(self):
-        return '80' if self.schema == 'http' else '443'
+        return 80 if self.schema == 'http' else 443
 
 
 class _UrlType(click.ParamType):
@@ -56,39 +58,6 @@ class _UrlType(click.ParamType):
 UrlType = _UrlType()
 
 
-@dataclasses.dataclass
-class LB:
-    env: str
-    cid: str
-    hostname: str = dataclasses.field(init=False)
-    container_id: str = dataclasses.field(init=False)
-
-    def __post_init__(self):
-        res = requests.get(
-            'https://smm.shopeemobile.com/api/service/get_info',
-            params={
-                'service_name': f'nginx-lb-{self.env}-{self.cid}',
-                'env': self.env,
-                'detail': True,
-            },
-            headers={'TOKEN': os.getenv('SMM_TOKEN')}
-        )
-        res.raise_for_status()
-        rj = res.json()
-        task = next(
-            t for t in rj[0]['tasks'] if t['idc'] == self.cid and
-            t['state'] == 'TASK_RUNNING' and t['id'].endswith('-1')
-        )
-        self.hostname = task['hostname']
-        self.container_id = task['container_id']
-
-    def run(self, command: str):
-        return subprocess.check_output(
-            f'docker -H {self.hostname}:7070 exec -i mesos-{self.container_id} {command}',
-            shell=True
-        ).decode()
-
-
 class NginxConf:
 
     @classmethod
@@ -101,7 +70,7 @@ class NginxConf:
 
     def find_location(self, url: URL) -> nginx.Location:
         server = self.find_server(url)
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         location = type('', (), {'value': ''})
         for l in (l for l in server.children if isinstance(l, nginx.Location)):
             if re.match(l.value, url.path or
@@ -119,7 +88,13 @@ class NginxConf:
             server_name = next(
                 k for k in server.children if k.name == 'server_name'
             )
-            bind = ''.join([k.value for k in server.children if getattr(k, 'name', '') == 'listen'])
+            bind = ''.join(
+                [
+                    k.value
+                    for k in server.children
+                    if getattr(k, 'name', '') == 'listen'
+                ]
+            )
             if url.netloc == server_name.value and url.port in bind:
                 break
         else:
@@ -129,12 +104,15 @@ class NginxConf:
 
     def format(self):
         jconf = self.nconf.as_dict
+
         def keyfunc(x):
             if 'server' not in x:
                 return sorted(x.keys()), ''
-            server_name = next(d for d in x['server'] if 'server_name' in d)['server_name']
+            server_name = next(d for d in x['server'] if 'server_name' in d
+                              )['server_name']
             listen = next(d for d in x['server'] if 'listen' in d)['listen']
             return sorted(x.keys()), f'{server_name}:{listen}'
+
         jconf['conf'].sort(key=keyfunc)
         for c in jconf['conf']:
             for v in c.values():
@@ -147,3 +125,23 @@ class NginxConf:
 
         p = re.compile(r'^\s*(?:{|},?)\s*$\n', re.M)
         return p.sub('', json.dumps(jconf, sort_keys=True, indent=4))
+
+
+class NginxLocation:
+    location: nginx.Location
+
+    @property
+    def path(self) -> str:
+        return self.location.value
+
+    @property
+    def proxy_pass(self) -> str:
+        try:
+            proxy_pass = next(
+                d for d in self.location.children if d.name == 'proxy_pass'
+            )
+        except StopIteration:
+            return ''
+        else:
+            proxy_pass = re.search('://(.+)', proxy_pass.value).group(1)
+            return proxy_pass
