@@ -17,7 +17,7 @@ class LB:
         res = requests.get(
             'https://smm.shopeemobile.com/api/service/get_info',
             params={
-                'service_name': f'nginx-lb-{self.env}-{self.cid}',
+                'service_name': f'nginx-lb-{self.env}-sg',
                 'env': self.env,
                 'detail': True,
             },
@@ -53,7 +53,12 @@ class LB:
         ).decode()
 
     def get_upstream(self, url: str) -> str:
-        upstream_raw = self.run(
-            f'grep {url} -r /etc/nginx/service_deps/services.json -A8 | grep addr || grep {url} -r /etc/nginx/http-enabled/dyupstream* -A5'
-        )
+        try:
+            upstream_raw = self.run(
+                f'grep {url} -r /etc/nginx/service_deps/services.json -A8 | grep addr'
+            )
+        except subprocess.CalledProcessError:
+            upstream_raw = self.run(
+                f'grep {url} -r /etc/nginx/http-enabled/dyupstream* -A5'
+            )
         return upstream_raw
