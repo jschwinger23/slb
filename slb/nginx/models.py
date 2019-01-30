@@ -50,6 +50,12 @@ class NginxServer:
             if isinstance(c, nginx.Location)
         ]
 
+    def get_location(self, url: URL):
+        return max(
+            self.locations.filter(__match=url.path),
+            key=lambda x: len(x.path)
+        )
+
     @property
     def server_name(self):
         try:

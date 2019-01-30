@@ -28,6 +28,7 @@ def url(ctx, url: URL):
 @click.pass_context
 def inspect(ctx):
     url, server = ctx.obj['url'], ctx.obj['server']
+    location = server.get_location(url)
     location = max(
         server.locations.filter(__match=url.path), key=lambda x: len(x.path)
     )
