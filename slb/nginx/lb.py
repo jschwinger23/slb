@@ -3,7 +3,7 @@ import requests
 import subprocess
 import dataclasses
 
-from ..utils import URL
+from slb.common.utils import URL
 
 
 @dataclasses.dataclass

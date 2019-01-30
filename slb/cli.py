@@ -1,8 +1,9 @@
 import click
 
-from .utils import URL, UrlType
-from slb.nginx.models import NginxProject, NginxProject
+from slb.common.utils import URL
+from slb.common.click import UrlType
 from slb.nginx.utils import NginxPrinter
+from slb.nginx.models import NginxProject, NginxProject
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))

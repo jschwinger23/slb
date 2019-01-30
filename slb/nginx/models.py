@@ -4,35 +4,8 @@ import dataclasses
 from typing import List, Set
 
 from .lb import LB
-from ..utils import URL
-
-
-class Objects:
-
-    def __init__(self, objects):
-        self.objects = objects
-
-    def filter(self, **kws) -> List:
-
-        def cond(obj):
-            for key, val in kws.items():
-                match = getattr(obj, key, None) == val
-                if key.endswith('__contains'):
-                    match = val in getattr(obj, key[:-10], None)
-                elif key.startswith('__'):
-                    match = getattr(obj, key[2:])(val)
-                if not match:
-                    return False
-            return True
-
-        return list(filter(cond, self.objects))
-
-    def get(self, **kws):
-        filtered = self.filter(**kws)
-        if len(filtered) != 1:
-            import pdb ;pdb.set_trace()
-            raise ValueError(f'expect one result but got {len(filtered)}')
-        return filtered[0]
+from slb.common.click import URL
+from slb.common.models import Objects
 
 
 @dataclasses.dataclass
@@ -55,7 +28,9 @@ class NginxProject:
 
     def __post_init__(self):
         self._servers = [
-            NginxServer(c) for c in self.conf.children if isinstance(c, nginx.Server)
+            NginxServer(c)
+            for c in self.conf.children
+            if isinstance(c, nginx.Server)
         ]
 
     @property
@@ -138,9 +113,7 @@ class ProxyPass:
 
     @property
     def upstream(self):
-        upstream = Upstream.from_raw(
-            LB.get_instance().get_upstream(self.url)
-        )
+        upstream = Upstream.from_raw(LB.get_instance().get_upstream(self.url))
         return upstream.netloc
 
 
