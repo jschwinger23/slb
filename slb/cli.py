@@ -26,20 +26,19 @@ def url(ctx, url: URL):
 
 @url.command()
 @click.pass_context
-def inspect(ctx):
+@click.option('--upstream', '-u', is_flag=True)
+def inspect(ctx, upstream=False):
     url, server = ctx.obj['url'], ctx.obj['server']
     location = server.get_location(url)
-    location = max(
-        server.locations.filter(__match=url.path), key=lambda x: len(x.path)
-    )
     click.secho(f'location: {location.path}', fg='green')
-    click.secho(f'proxy_pass: {location.proxy_pass}', fg='green')
-    click.secho(f'upstream: {location.proxy_pass.upstream}', fg='green')
+    click.secho(f'proxy_pass: {location.proxy_pass.value}', fg='green')
+    if upstream:
+        click.secho(f'upstream: {location.proxy_pass.upstream}', fg='green')
 
 
 @url.command()
-@click.option('--vhost', '-s', type=click.BOOL, default=False)
-@click.option('--pretty', '-p', type=click.BOOL, default=False)
+@click.option('--vhost', '-s', is_flag=True)
+@click.option('--pretty', '-p', is_flag=True)
 @click.pass_context
 def conf(ctx, vhost=False, pretty=False):
     url, server = ctx.obj['url'], ctx.obj['server']
