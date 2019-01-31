@@ -5,6 +5,7 @@ from typing import List, Set
 
 from .lb import LB
 from slb.common.click import URL
+from slb.common.utils import Visitor
 from slb.common.models import Objects
 
 
@@ -33,6 +34,11 @@ class NginxProject:
             if isinstance(c, nginx.Server)
         ]
 
+    def accept(self, visitor: Visitor):
+        visitor.visit(self)
+        for server in self._servers:
+            server.accept(visitor)
+
     @property
     def servers(self):
         return Objects(self._servers)
@@ -55,6 +61,11 @@ class NginxServer:
             self.locations.filter(__match=url.path),
             key=lambda x: len(x.path)
         )
+
+    def accept(self, visitor: Visitor):
+        visitor.visit(self)
+        for location in self._locations:
+            location.accept(visitor)
 
     @property
     def server_name(self):
@@ -90,6 +101,9 @@ class NginxLocation:
 
     def match(self, path: str):
         return bool(re.match(self.path, path or '/'))
+
+    def accept(self, visitor: Visitor):
+        visitor.visit(self)
 
     @property
     def path(self):

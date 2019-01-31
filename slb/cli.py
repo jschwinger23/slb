@@ -37,15 +37,15 @@ def inspect(ctx, upstream=False):
 
 
 @url.command()
-@click.option('--vhost', '-s', is_flag=True)
+@click.option('--vhost', '-h', is_flag=True)
 @click.option('--pretty', '-p', is_flag=True)
 @click.pass_context
 def conf(ctx, vhost=False, pretty=False):
     url, server = ctx.obj['url'], ctx.obj['server']
     conf = server
     if not vhost:
-        conf = server.find_location(url)
-    NginxPrinter(pretty=pretty).print(conf)
+        conf = server.get_location(url)
+    NginxPrinter().visit(conf)
 
 
 @main.command()
